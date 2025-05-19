@@ -1,0 +1,117 @@
+﻿@model WebBanHangOnline.Models.OrderViewModel
+
+@using (Ajax.BeginForm(
+    "CheckOut",
+    "ShoppingCart",
+    new AjaxOptions
+    {
+        HttpMethod = "POST",
+        OnBegin = "OnBeginCO",
+        OnSuccess = "OnSuccessCO",
+        OnFailure = "OnFailureCO",
+        OnComplete = "OnCompleteCO",
+        UpdateTargetId = "load_send"
+    },
+    new { id = "myForm" }
+))
+{
+    @* Script định nghĩa các callback *@
+    <script type="text/javascript">
+        function OnBeginCO() {
+            $('#btnCheckOut').prop('disabled', true);
+            $('#load_send').html('<span class="text-primary">Đang gửi...</span>');
+        }
+        function OnSuccessCO(res) {
+            if (res.Success) {
+                if (res.Code == 1) {
+                    window.location = '/ShoppingCart/CheckOutSuccess';
+                }
+                else {
+                    window.location = res.Url;
+                }
+            } else {
+                $('#load_send').html('<span class="text-danger">' + (res.Message || 'Đặt hàng thất bại!') + '</span>');
+            }
+        }
+        function OnFailureCO() {
+            $('#load_send').html('<span class="text-danger">Có lỗi xảy ra, vui lòng thử lại.</span>');
+        }
+        function OnCompleteCO() {
+            $('#btnCheckOut').prop('disabled', false);
+        }
+
+        // Hiển thị tùy chọn thanh toán khi chọn "Chuyển khoản"
+        $(document).ready(function () {
+            $('body').on('change', '#drTypePayment', function () {
+                $('#load_form_payment').toggle($(this).val() == '2');
+            });
+        });
+    </script>
+
+    @Html.AntiForgeryToken()
+
+    <h3>Thông tin khách hàng</h3>
+
+    @* Vì chúng ta đang ở trong @using { ... } nên IF là C# code, không cần dấu @ *@
+    if (!Request.IsAuthenticated)
+    {
+        <div class="form-group">
+            <label>Họ tên khách hàng</label>
+            <input type="text" name="CustomerName" required class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Số điện thoại</label>
+            <input type="text" name="Phone" class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Địa chỉ</label>
+            <input type="text" name="Address" class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" name="Email" class="form-control" autocomplete="off" />
+        </div>
+    }
+    else
+    {
+        var user = (WebBanHangOnline.Models.ApplicationUser)ViewBag.User;
+        <div class="form-group">
+            <label>Họ tên khách hàng</label>
+            <input type="text" name="CustomerName" value="@user.FullName" class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Số điện thoại</label>
+            <input type="text" name="Phone" value="@user.Phone" class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Địa chỉ</label>
+            <input type="text" name="Address" class="form-control" autocomplete="off" />
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="text" name="Email" value="@user.Email" class="form-control" autocomplete="off" />
+        </div>
+    }
+
+    <div class="form-group">
+        <label>Hình thức thanh toán</label>
+        <select class="form-control" name="TypePayment" id="drTypePayment">
+            <option value="1" selected>COD</option>
+            <option value="2">Chuyển khoản</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="load_form_payment" style="display:none;">
+        <h4>Chọn phương thức chuyển khoản:</h4>
+        <label><input type="radio" name="TypePaymentVN" value="0" checked /> VNPAYQR</label><br />
+        <label><input type="radio" name="TypePaymentVN" value="1" /> Ứng dụng VNPAYQR</label><br />
+        <label><input type="radio" name="TypePaymentVN" value="2" /> ATM/Ngân hàng nội địa</label><br />
+        <label><input type="radio" name="TypePaymentVN" value="3" /> Thẻ quốc tế</label>
+    </div>
+
+    <div id="load_send" class="mb-3"></div>
+
+    <div class="form-group">
+        <button type="submit" id="btnCheckOut" class="btn btn-success btn-block">Đặt hàng</button>
+    </div>
+}
