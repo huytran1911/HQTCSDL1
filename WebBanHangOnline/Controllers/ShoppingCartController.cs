@@ -187,58 +187,71 @@ namespace WebBanHangOnline.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult CheckOut(OrderViewModel req)
         {
-            // Kết quả mặc định
-            var code = new { Success = false, Code = -1, Url = "" };
+            var result = new { Success = false, Code = -1, Url = "", Message = "" };
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return Json(result);
+
+            var cart = Session["Cart"] as ShoppingCart;
+            if (cart == null || !cart.Items.Any())
+                return Json(result);
+
+            // Tạo order và OrderDetails
+            var order = new Order
             {
-                ShoppingCart cart = (ShoppingCart)Session["Cart"];
-                if (cart != null)
-                {
-                            // Tạo order từ viewmodel và giỏ hàng
-                            Order order = new Order
-                            {
-                                CustomerName = req.CustomerName,
-                                Phone = req.Phone,
-                                Address = req.Address,
-                                Email = req.Email,
-                                Status = PaymentStatus.ChoThanhToan,  // Chờ thanh toán
-                                TypePayment = req.TypePayment,
-                                CreatedDate = DateTime.Now,
-                                ModifiedDate = DateTime.Now,
-                                CreatedBy = req.Phone
-                            };
+                CustomerName = req.CustomerName,
+                Phone = req.Phone,
+                Address = req.Address,
+                Email = req.Email,
+                Status = PaymentStatus.ChoThanhToan,
+                TypePayment = req.TypePayment,
+                CreatedDate = DateTime.Now,
+                ModifiedDate = DateTime.Now,
+                CreatedBy = req.Phone
+            };
+            if (User.Identity.IsAuthenticated)
+                order.CustomerId = User.Identity.GetUserId();
 
-                            if (User.Identity.IsAuthenticated)
-                    {
-                        order.CustomerId = User.Identity.GetUserId();
-                    }
-
-            // Sinh mã đơn hàng
+            // Sinh mã và nhúng details
             var rd = new Random();
-            order.Code = $"DH{rd.Next(0,9)}{rd.Next(0,9)}{rd.Next(0,9)}{rd.Next(0,9)}";
-
-            // Đưa cart items vào OrderDetails
+            order.Code = $"DH{rd.Next(0, 9)}{rd.Next(0, 9)}{rd.Next(0, 9)}{rd.Next(0, 9)}";
             cart.Items.ForEach(x => order.OrderDetails.Add(new OrderDetail
             {
                 ProductId = x.ProductId,
-                Quantity  = x.Quantity,
-                Price     = x.Price
+                Quantity = x.Quantity,
+                Price = x.Price
             }));
-
-            // Tính tổng
             order.TotalAmount = cart.Items.Sum(x => x.Price * x.Quantity);
 
-            // Thêm vào context
-            db.Orders.Add(order);
-
-            try
+            using (var tran = db.Database.BeginTransaction(System.Data.IsolationLevel.Serializable))
             {
-                // <-- Trigger sẽ ném lỗi ở đây nếu không đủ tồn kho
-                db.SaveChanges();
+                try
+                {
+                    // 1) Kiểm tra & trừ tồn kho
+                    foreach (var item in cart.Items)
+                    {
+                        // Khóa dòng sản phẩm
+                        var prod = db.Products
+                            .SqlQuery(
+                               "SELECT * FROM tb_Product WITH (ROWLOCK, UPDLOCK) WHERE Id = @p0",
+                               item.ProductId)
+                            .FirstOrDefault();
+                        if (prod == null || prod.Quantity < item.Quantity)
+                            throw new InvalidOperationException(
+                                $"Sản phẩm \"{item.ProductName}\" chỉ còn {(prod?.Quantity ?? 0)}.");
 
-                // Gửi mail cho khách
-                var strSanPham = "";
+                        prod.Quantity -= item.Quantity;
+                        db.Entry(prod).State = System.Data.Entity.EntityState.Modified;
+                    }
+
+                    // 2) Thêm đơn hàng + lưu vào CSDL
+                    db.Orders.Add(order);
+                    db.SaveChanges();
+
+                    // 3) Commit
+                    tran.Commit();
+                    // Gửi mail cho khách
+                    var strSanPham = "";
                 decimal thanhtien = 0;
                 foreach (var sp in cart.Items)
                 {
@@ -273,81 +286,24 @@ namespace WebBanHangOnline.Controllers
                                      .Replace("{{TongTien}}", Common.Common.FormatNumber(TongTien,0));
                 Common.Common.SendMail("ShopOnline", "Đơn hàng mới #" + order.Code, templateA, ConfigurationManager.AppSettings["EmailAdmin"]);
 
-                // Clear Cart và trả về kết quả thành công
-                cart.ClearCart();
-                var url = "";
-                if (req.TypePayment == 2)
-                {
-                    url = UrlPayment(req.TypePaymentVN, order.Code);
+                    // Clear Cart và trả về kết quả thành công
+                    cart.ClearCart();
+                    var redirectUrl = req.TypePayment == 2
+                                      ? UrlPayment(req.TypePaymentVN, order.Code)
+                                      : Url.Action("CheckOutSuccess", "ShoppingCart");
+
+                    result = new { Success = true, Code = req.TypePayment, Url = redirectUrl, Message = "" };
                 }
-                code = new { Success = true, Code = req.TypePayment, Url = url };
+                catch (Exception ex)
+                {
+                    tran.Rollback();
+                    result = new { Success = false, Code = -1, Url = "", Message = ex.Message };
+                }
             }
-            catch (System.Data.Entity.Infrastructure.DbUpdateException)
-            {
-                // Bắt lỗi trigger RAISERROR('Không đủ tồn kho...', 16, 1)
-                code = new { Success = false, Code = -1, Url = "" };
-            }
-        }
-    }
 
-    return Json(code);
-}
-        //Tạo API trả về tồn kho hiện tại
-        [AllowAnonymous]
-        [HttpGet]
-        public JsonResult GetStock(int productId)
-        {
-            var product = db.Products
-                .Where(p => p.Id == productId)
-                .Select(p => new { p.Id, p.Quantity })
-                .FirstOrDefault();
-            if (product == null)
-                return Json(new { success = false }, JsonRequestBehavior.AllowGet);
-
-            return Json(new { success = true, quantity = product.Quantity }, JsonRequestBehavior.AllowGet);
+            return Json(result);
         }
 
-
-
-        /* [AllowAnonymous]
-         [HttpPost]
-         public ActionResult AddToCart(int id, int quantity)
-         {
-             var code = new { Success = false, msg = "", code = -1, Count = 0 };
-             var db = new ApplicationDbContext();
-             var checkProduct = db.Products.FirstOrDefault(x => x.Id == id);
-             if (checkProduct != null)
-             {
-                 ShoppingCart cart = (ShoppingCart)Session["Cart"];
-                 if (cart == null)
-                 {
-                     cart = new ShoppingCart();
-                 }
-                 ShoppingCartItem item = new ShoppingCartItem
-                 {
-                     ProductId = checkProduct.Id,
-                     ProductName = checkProduct.Title,
-                     CategoryName = checkProduct.ProductCategory.Title,
-                     Alias = checkProduct.Alias,
-                     Quantity = quantity
-                 };
-                 if (checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault) != null)
-                 {
-                     item.ProductImg = checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault).Image;
-                 }
-                 item.Price = checkProduct.Price;
-                 if (checkProduct.PriceSale > 0)
-                 {
-                     item.Price = (decimal)checkProduct.PriceSale;
-                 }
-                 item.TotalPrice = item.Quantity * item.Price;
-                 cart.AddToCart(item, quantity);
-                 Session["Cart"] = cart;
-                 code = new { Success = true, msg = "Thêm sản phẩm vào giở hàng thành công!", code = 1, Count = cart.Items.Count };
-             }
-             return Json(code);
-         }
- */
         [AllowAnonymous]
         [HttpPost]
         public ActionResult AddToCart(int id, int quantity)
@@ -450,6 +406,66 @@ namespace WebBanHangOnline.Controllers
             return Json(new { Success = false });
         }
 
+        //thêm API kiểm tra toàn bộ giỏ hàng
+        [AllowAnonymous]
+        [HttpPost]
+        public JsonResult ValidateCart()
+        {
+            var cart = Session["Cart"] as ShoppingCart;
+            if (cart == null || !cart.Items.Any())
+                return Json(new { success = false, msg = "Giỏ hàng trống" });
+
+            // Lấy danh sách productId trong cart
+            var productIds = cart.Items.Select(x => x.ProductId).ToList();
+            // Lấy tồn kho cùng lúc bằng 1 query
+            var stocks = db.Products
+                           .Where(p => productIds.Contains(p.Id))
+                           .Select(p => new { p.Id, p.Quantity })
+                           .ToList();
+
+            // Tìm xem có item nào vượt tồn không
+            var invalids = cart.Items
+                .Select(item => new {
+                    item.ProductId,
+                    item.ProductName,
+                    Wanted = item.Quantity,
+                    InStock = stocks.FirstOrDefault(s => s.Id == item.ProductId)?.Quantity ?? 0
+                })
+                .Where(x => x.Wanted > x.InStock)
+                .ToList();
+
+            if (invalids.Any())
+            {
+                // Trả về danh sách các item lỗi
+                return Json(new
+                {
+                    success = false,
+                    invalids = invalids.Select(x => new {
+                        x.ProductId,
+                        x.ProductName,
+                        x.Wanted,
+                        x.InStock
+                    })
+                });
+            }
+
+            // Nếu không có lỗi
+            return Json(new { success = true });
+        }
+        //thêm getstock để lấy số lượng hàng tồn
+        [AllowAnonymous]
+        [HttpGet]
+        public JsonResult GetStock(int productId)
+        {
+            var product = db.Products
+                .Where(p => p.Id == productId)
+                .Select(p => new { p.Id, p.Quantity })
+                .FirstOrDefault();
+            if (product == null)
+                return Json(new { success = false }, JsonRequestBehavior.AllowGet);
+
+            return Json(new { success = true, quantity = product.Quantity }, JsonRequestBehavior.AllowGet);
+        }
 
 
         #region Thanh toán vnpay

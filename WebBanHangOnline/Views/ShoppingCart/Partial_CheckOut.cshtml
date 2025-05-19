@@ -113,5 +113,78 @@
 
     <div class="form-group">
         <button type="submit" id="btnCheckOut" class="btn btn-success btn-block">Đặt hàng</button>
+        <div id="cart-errors" style="color:red;"></div>
     </div>
+        <script>
+    $(function(){
+        var refreshInterval = 3000; // 15s
+        var cartItems = [];
+
+        function fetchCartItems(){
+            // Lấy productId và số lượng muốn mua từ table
+            cartItems = [];
+            $('#cart-table tbody tr').each(function(){
+                var row = $(this);
+                var productId = row.data('product-id');
+                var qty = parseInt(row.find('.quantity-input').val(), 10);
+                cartItems.push({ productId: productId, wanted: qty, row: row });
+            });
+        }
+
+        function refreshAllStocks(){
+            // Gọi API ValidateCart nhưng chỉ lấy stocks về không hiển thị lỗi
+            $.post('@Url.Action("ValidateCart","ShoppingCart")')
+             .done(function(res){
+                if (res.success) {
+                    // Clear any previous warnings
+                    $('#cart-errors').empty();
+                    $('#btnCheckout').prop('disabled', false);
+                } else {
+                    // Nếu có invalids, highlight row và disable checkout
+                    $('#cart-errors').text('Một số sản phẩm đã hết hàng, vui lòng điều chỉnh số lượng.');
+                    $('#btnCheckout').prop('disabled', true);
+
+                    // Đánh dấu từng row lỗi
+                    $('#cart-table tbody tr').removeClass('table-danger');
+                    res.invalids.forEach(function(item){
+                        $('#cart-table tbody tr[data-product-id="'+item.ProductId+'"]')
+                            .addClass('table-danger')
+                            .find('.stock-info')
+                            .text('Còn '+ item.InStock);
+                    });
+                }
+             });
+        }
+
+        // Mỗi 15s cập nhật tồn kho và validate
+        fetchCartItems();
+        refreshAllStocks();
+        setInterval(refreshAllStocks, refreshInterval);
+
+        // Khi user thay đổi quantity input
+        $('body').on('change', '.quantity-input', function(){
+            refreshAllStocks();
+        });
+
+        // Trước khi redirect sang checkout
+        $('#btnCheckout').on('click', function(e){
+            e.preventDefault();
+            $.post('@Url.Action("ValidateCart","ShoppingCart")')
+             .done(function(res){
+                if (res.success) {
+                    // Nếu OK thì redirect
+                    window.location = '/thanh-toan';
+                } else {
+                    // Hiển thị chi tiết lỗi
+                    var msgs = res.invalids.map(function(x){
+                        return x.ProductName + ': bạn chọn '+ x.Wanted +', chỉ còn '+ x.InStock;
+                    });
+                    $('#cart-errors').html(msgs.join('<br>'));
+                    $('#btnCheckout').prop('disabled', true);
+                }
+             });
+        });
+    });
+        </script>
+
 }
