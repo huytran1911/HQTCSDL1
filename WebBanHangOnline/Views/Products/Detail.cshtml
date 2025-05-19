@@ -6,6 +6,7 @@
 }
 <link rel="stylesheet" type="text/css" href="~/Content/assets/styles/single_styles.css">
 <link rel="stylesheet" type="text/css" href="~/Content/assets/styles/single_responsive.css">
+<link rel="stylesheet" type="text/css" href="~/Content/bootstrap.min.css" />
 @if (Model != null)
 {
 
@@ -84,6 +85,12 @@
                         <li><i class="fa fa-star-o" aria-hidden="true"></i></li>
                     </ul>
 
+                    <div class="well well-sm">
+                        <div class="product_quantity_info">
+                            Còn lại: <span id="stock-quantity"></span> sản phẩm
+                        </div>
+                    </div>
+
                     <div class="quantity d-flex flex-column flex-sm-row align-items-sm-center">
                         <span>Quantity:</span>
                         <div class="quantity_selector">
@@ -91,6 +98,7 @@
                             <span id="quantity_value">1</span>
                             <span class="plus"><i class="fa fa-plus" aria-hidden="true"></i></span>
                         </div>
+
                         <div class="red_button add_to_cart_button"><a href="#" class="btnAddToCart" data-id="@Model.Id">add to cart</a></div>
                         <div class="product_favorite d-flex flex-column align-items-center justify-content-center"></div>
                     </div>
@@ -157,4 +165,59 @@
 }
 @section scripts{
     <script src="~/Content/assets/js/single_custom.js"></script>
+    <script>
+$(document).ready(function(){
+    var productId = @Model.Id;
+    var currentStock = 0;
+
+    function refreshStock() {
+        $.getJSON('@Url.Action("GetStock","ShoppingCart")', { productId: productId })
+         .done(function(res){
+            if (res.success) {
+                currentStock = res.quantity;
+                $('#stock-quantity').text(currentStock);
+            } else {
+                $('#stock-quantity').text('N/A');
+            }
+         });
+    }
+
+    // Lần đầu load và định kỳ every 15s
+    refreshStock();
+    setInterval(refreshStock, 1000);
+
+    // Khi user thay đổi số lượng muốn mua
+    $('.plus, .minus').on('click', function(){
+        var qty = parseInt($('#quantity_value').text());
+        if (qty > currentStock) {
+            alert('Chỉ còn ' + currentStock + ' sản phẩm. Vui lòng điều chỉnh lại.');
+            $('#quantity_value').text(currentStock);
+        }
+    });
+
+    // Trước khi AddToCart, kiểm tra 1 lần cuối
+    $('.btnAddToCart').on('click', function(e){
+        e.preventDefault();
+        var qty = parseInt($('#quantity_value').text());
+        if (qty > currentStock) {
+            alert('Số lượng bạn chọn vượt quá tồn kho ('+currentStock+'). Không thể thêm vào giỏ.');
+            return;
+        }
+        // nếu OK, gọi AJAX AddToCart như bình thường
+        var id = $(this).data('id');
+        $.post('@Url.Action("AddToCart","ShoppingCart")',
+            { id: id, quantity: qty },
+            function(res){
+                if (res.Success) {
+                    // cập nhật số đếm, thông báo thành công
+                } else if (res.code === -2) {
+                    alert(res.msg);
+                }
+                // ...
+            }
+        );
+    });
+});
+    </script>
+
 }

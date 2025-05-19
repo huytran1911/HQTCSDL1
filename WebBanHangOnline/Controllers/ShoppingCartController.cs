@@ -183,36 +183,36 @@ namespace WebBanHangOnline.Controllers
         }
 
         [HttpPost]
-[AllowAnonymous]
-[ValidateAntiForgeryToken]
-public ActionResult CheckOut(OrderViewModel req)
-{
-    // Kết quả mặc định
-    var code = new { Success = false, Code = -1, Url = "" };
-
-    if (ModelState.IsValid)
-    {
-        ShoppingCart cart = (ShoppingCart)Session["Cart"];
-        if (cart != null)
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public ActionResult CheckOut(OrderViewModel req)
         {
-                    // Tạo order từ viewmodel và giỏ hàng
-                    Order order = new Order
-                    {
-                        CustomerName = req.CustomerName,
-                        Phone = req.Phone,
-                        Address = req.Address,
-                        Email = req.Email,
-                        Status = PaymentStatus.ChoThanhToan,  // Chờ thanh toán
-                        TypePayment = req.TypePayment,
-                        CreatedDate = DateTime.Now,
-                        ModifiedDate = DateTime.Now,
-                        CreatedBy = req.Phone
-                    };
+            // Kết quả mặc định
+            var code = new { Success = false, Code = -1, Url = "" };
 
-                    if (User.Identity.IsAuthenticated)
+            if (ModelState.IsValid)
             {
-                order.CustomerId = User.Identity.GetUserId();
-            }
+                ShoppingCart cart = (ShoppingCart)Session["Cart"];
+                if (cart != null)
+                {
+                            // Tạo order từ viewmodel và giỏ hàng
+                            Order order = new Order
+                            {
+                                CustomerName = req.CustomerName,
+                                Phone = req.Phone,
+                                Address = req.Address,
+                                Email = req.Email,
+                                Status = PaymentStatus.ChoThanhToan,  // Chờ thanh toán
+                                TypePayment = req.TypePayment,
+                                CreatedDate = DateTime.Now,
+                                ModifiedDate = DateTime.Now,
+                                CreatedBy = req.Phone
+                            };
+
+                            if (User.Identity.IsAuthenticated)
+                    {
+                        order.CustomerId = User.Identity.GetUserId();
+                    }
 
             // Sinh mã đơn hàng
             var rd = new Random();
@@ -292,9 +292,62 @@ public ActionResult CheckOut(OrderViewModel req)
 
     return Json(code);
 }
+        //Tạo API trả về tồn kho hiện tại
+        [AllowAnonymous]
+        [HttpGet]
+        public JsonResult GetStock(int productId)
+        {
+            var product = db.Products
+                .Where(p => p.Id == productId)
+                .Select(p => new { p.Id, p.Quantity })
+                .FirstOrDefault();
+            if (product == null)
+                return Json(new { success = false }, JsonRequestBehavior.AllowGet);
+
+            return Json(new { success = true, quantity = product.Quantity }, JsonRequestBehavior.AllowGet);
+        }
 
 
 
+        /* [AllowAnonymous]
+         [HttpPost]
+         public ActionResult AddToCart(int id, int quantity)
+         {
+             var code = new { Success = false, msg = "", code = -1, Count = 0 };
+             var db = new ApplicationDbContext();
+             var checkProduct = db.Products.FirstOrDefault(x => x.Id == id);
+             if (checkProduct != null)
+             {
+                 ShoppingCart cart = (ShoppingCart)Session["Cart"];
+                 if (cart == null)
+                 {
+                     cart = new ShoppingCart();
+                 }
+                 ShoppingCartItem item = new ShoppingCartItem
+                 {
+                     ProductId = checkProduct.Id,
+                     ProductName = checkProduct.Title,
+                     CategoryName = checkProduct.ProductCategory.Title,
+                     Alias = checkProduct.Alias,
+                     Quantity = quantity
+                 };
+                 if (checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault) != null)
+                 {
+                     item.ProductImg = checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault).Image;
+                 }
+                 item.Price = checkProduct.Price;
+                 if (checkProduct.PriceSale > 0)
+                 {
+                     item.Price = (decimal)checkProduct.PriceSale;
+                 }
+                 item.TotalPrice = item.Quantity * item.Price;
+                 cart.AddToCart(item, quantity);
+                 Session["Cart"] = cart;
+                 code = new { Success = true, msg = "Thêm sản phẩm vào giở hàng thành công!", code = 1, Count = cart.Items.Count };
+             }
+             return Json(code);
+         }
+ */
         [AllowAnonymous]
         [HttpPost]
         public ActionResult AddToCart(int id, int quantity)
@@ -302,38 +355,54 @@ public ActionResult CheckOut(OrderViewModel req)
             var code = new { Success = false, msg = "", code = -1, Count = 0 };
             var db = new ApplicationDbContext();
             var checkProduct = db.Products.FirstOrDefault(x => x.Id == id);
-            if (checkProduct != null)
+
+            if (checkProduct == null)
             {
-                ShoppingCart cart = (ShoppingCart)Session["Cart"];
-                if (cart == null)
-                {
-                    cart = new ShoppingCart();
-                }
-                ShoppingCartItem item = new ShoppingCartItem
-                {
-                    ProductId = checkProduct.Id,
-                    ProductName = checkProduct.Title,
-                    CategoryName = checkProduct.ProductCategory.Title,
-                    Alias = checkProduct.Alias,
-                    Quantity = quantity
-                };
-                if (checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault) != null)
-                {
-                    item.ProductImg = checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault).Image;
-                }
-                item.Price = checkProduct.Price;
-                if (checkProduct.PriceSale > 0)
-                {
-                    item.Price = (decimal)checkProduct.PriceSale;
-                }
-                item.TotalPrice = item.Quantity * item.Price;
-                cart.AddToCart(item, quantity);
-                Session["Cart"] = cart;
-                code = new { Success = true, msg = "Thêm sản phẩm vào giở hàng thành công!", code = 1, Count = cart.Items.Count };
+                code = new { Success = false, msg = "Sản phẩm không tồn tại", code = -1, Count = 0 };
+                return Json(code);
             }
+
+            // Kiểm tra tồn kho
+            if (checkProduct.Quantity < quantity)
+            {
+                code = new
+                {
+                    Success = false,
+                    msg = $"Chỉ còn {checkProduct.Quantity} sản phẩm. Không thể thêm {quantity}.",
+                    code = -2,
+                    Count = 0
+                };
+                return Json(code);
+            }
+
+            // Phần thêm vào giỏ hàng
+            ShoppingCart cart = (ShoppingCart)Session["Cart"] ?? new ShoppingCart();
+            ShoppingCartItem item = new ShoppingCartItem
+            {
+                ProductId = checkProduct.Id,
+                ProductName = checkProduct.Title,
+                CategoryName = checkProduct.ProductCategory.Title,
+                Alias = checkProduct.Alias,
+                Quantity = quantity
+            };
+
+            if (checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault) != null)
+            {
+                item.ProductImg = checkProduct.ProductImage.FirstOrDefault(x => x.IsDefault).Image;
+            }
+
+            item.Price = checkProduct.Price;
+            if (checkProduct.PriceSale > 0)
+            {
+                item.Price = (decimal)checkProduct.PriceSale;
+            }
+
+            item.TotalPrice = item.Quantity * item.Price;
+            cart.AddToCart(item, quantity);
+            Session["Cart"] = cart;
+            code = new { Success = true, msg = "Thêm giỏ hàng thành công", code = 1, Count = cart.Items.Count };
             return Json(code);
         }
-
 
         [AllowAnonymous]
         [HttpPost]
