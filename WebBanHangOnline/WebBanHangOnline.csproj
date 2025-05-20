@@ -236,10 +236,12 @@
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ManageController.cs" />
     <Compile Include="Controllers\MenuController.cs" />
+    <Compile Include="Controllers\MyOrdersController.cs" />
     <Compile Include="Controllers\NewsController.cs" />
     <Compile Include="Controllers\ProductsController.cs" />
     <Compile Include="Controllers\ReviewController.cs" />
     <Compile Include="Controllers\ShoppingCartController.cs" />
+    <Compile Include="Controllers\UserAuthorizeAttribute .cs" />
     <Compile Include="Controllers\WishlistController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -272,6 +274,7 @@
     <Compile Include="Models\EF\Wishlist.cs" />
     <Compile Include="Models\IdentityModels.cs" />
     <Compile Include="Models\ManageViewModels.cs" />
+    <Compile Include="Models\OrderTrackingViewModel.cs" />
     <Compile Include="Models\OrderViewModel.cs" />
     <Compile Include="Models\PaymentStatus.cs" />
     <Compile Include="Models\Payments\VnPayLibrary.cs" />
@@ -3641,6 +3644,9 @@
     <Content Include="Content\bootstrap.css.map" />
     <Content Include="Content\bootstrap-theme.min.css.map" />
     <Content Include="Content\bootstrap-theme.css.map" />
+    <Content Include="Areas\Admin\Views\MyOrders\Details.cshtml" />
+    <Content Include="Areas\Admin\Views\MyOrders\Index.cshtml" />
+    <Content Include="Areas\Admin\Views\MyOrders\_OrderDetailsPartial.cshtml" />
     <None Include="Scripts\jquery-3.4.1.intellisense.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
@@ -3649,6 +3655,8 @@
     <Content Include="Scripts\jquery-3.4.1.slim.js" />
     <Content Include="Scripts\jquery-3.4.1.slim.min.js" />
     <None Include="Scripts\jquery.validate-vsdoc.js" />
+    <Content Include="Scripts\jquery.signalR-2.4.3.js" />
+    <Content Include="Scripts\jquery.signalR-2.4.3.min.js" />
     <Content Include="Scripts\jquery.unobtrusive-ajax.js" />
     <Content Include="Scripts\jquery.unobtrusive-ajax.min.js" />
     <Content Include="Scripts\jquery.validate.js" />
@@ -3659,6 +3667,35 @@
     <Content Include="Scripts\jsShopping.js" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Uploads\images\244994762_2380031152133544_4984166604951804110_n.jpg" />
+    <Content Include="Uploads\images\sanpham\banner_1.jpg" />
+    <Content Include="Uploads\images\sanpham\banner_2.jpg" />
+    <Content Include="Uploads\images\sanpham\banner_3.jpg" />
+    <Content Include="Uploads\images\sanpham\blog_1.jpg" />
+    <Content Include="Uploads\images\sanpham\blog_2.jpg" />
+    <Content Include="Uploads\images\sanpham\blog_3.jpg" />
+    <Content Include="Uploads\images\sanpham\deal_ofthe_week.png" />
+    <Content Include="Uploads\images\sanpham\desc_1.jpg" />
+    <Content Include="Uploads\images\sanpham\desc_2.jpg" />
+    <Content Include="Uploads\images\sanpham\desc_3.jpg" />
+    <Content Include="Uploads\images\sanpham\map_marker.png" />
+    <Content Include="Uploads\images\sanpham\product_1.png" />
+    <Content Include="Uploads\images\sanpham\product_10.png" />
+    <Content Include="Uploads\images\sanpham\product_2.png" />
+    <Content Include="Uploads\images\sanpham\product_3.png" />
+    <Content Include="Uploads\images\sanpham\product_4.png" />
+    <Content Include="Uploads\images\sanpham\product_5.png" />
+    <Content Include="Uploads\images\sanpham\product_6.png" />
+    <Content Include="Uploads\images\sanpham\product_7.png" />
+    <Content Include="Uploads\images\sanpham\product_8.png" />
+    <Content Include="Uploads\images\sanpham\product_9.png" />
+    <Content Include="Uploads\images\sanpham\single_1.jpg" />
+    <Content Include="Uploads\images\sanpham\single_1_thumb.jpg" />
+    <Content Include="Uploads\images\sanpham\single_2.jpg" />
+    <Content Include="Uploads\images\sanpham\single_2_thumb.jpg" />
+    <Content Include="Uploads\images\sanpham\single_3.jpg" />
+    <Content Include="Uploads\images\sanpham\single_3_thumb.jpg" />
+    <Content Include="Uploads\images\sanpham\slider_1.jpg" />
+    <Content Include="Uploads\images\setting\product_6.png" />
     <Content Include="Uploads\_thumbs\Images\244994762_2380031152133544_4984166604951804110_n.jpg" />
     <Content Include="Web.config" />
     <Content Include="Web.Debug.config">
@@ -3722,6 +3759,9 @@
     <Content Include="Views\Review\_Load_Review.cshtml" />
     <Content Include="Views\Wishlist\Index.cshtml" />
     <Content Include="Views\Review\LichSuDonHang.cshtml" />
+    <Content Include="Views\MyOrders\Details.cshtml" />
+    <Content Include="Views\MyOrders\Index.cshtml" />
+    <Content Include="Views\MyOrders\_OrderDetailsPartial.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
