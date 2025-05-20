@@ -234,3 +234,9 @@ E:\CSDL\HQT\WebBanHangOnline\obj\Debug\WebBanHangOnline.dll
 E:\CSDL\HQT\WebBanHangOnline\obj\Debug\WebBanHangOnline.pdb
 E:\CSDL\HQT\WebBanHangOnline\obj\Debug\WebBanHangOnline.Migrations.databse.resources
 E:\CSDL\HQT\WebBanHangOnline\obj\Debug\WebBanHangOnline.csproj.GenerateResource.cache
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.csproj.AssemblyReference.cache
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.Migrations.databse.resources
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.csproj.GenerateResource.cache
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.csproj.CoreCompileInputs.cache
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.dll
+C:\DoAnMau\HQTCSDL1\WebBanHangOnline\obj\Debug\WebBanHangOnline.pdb
