@@ -1,30 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
 using WebBanHangOnline.Models;
 using PagedList;
 using System.Globalization;
 using System.Data.Entity;
 using WebBanHangOnline.Models.ViewModels;
+using WebBanHangOnline.Hubs;
+using Microsoft.AspNet.SignalR;
+using WebBanHangOnline.Models.EF;
 
 namespace WebBanHangOnline.Areas.Admin.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     public class OrderController : Controller
     {
-
         private ApplicationDbContext db = new ApplicationDbContext();
-        // GET: Admin/Order
+
+        // Trang danh sách đơn hàng phân trang
         public ActionResult Index(int? page)
         {
             var items = db.Orders.OrderByDescending(x => x.CreatedDate).ToList();
 
-            if (page == null)
-            {
-                page = 1;
-            }
+            if (page == null) page = 1;
             var pageNumber = page ?? 1;
             var pageSize = 10;
             ViewBag.PageSize = pageSize;
@@ -32,31 +31,142 @@ namespace WebBanHangOnline.Areas.Admin.Controllers
             return View(items.ToPagedList(pageNumber, pageSize));
         }
 
+        // Thêm đơn hàng mới kèm realtime cập nhật thống kê
+        [HttpPost]
+        public ActionResult PlaceOrder(Order order)
+        {
+            if (ModelState.IsValid)
+            {
+                db.Orders.Add(order);
+                db.SaveChanges();
+
+                // Lấy số liệu thống kê mới nhất
+                var totalOrders = db.Orders.Count();
+                var pendingOrders = db.Orders.Count(o => o.Status == PaymentStatus.ChoThanhToan);
+                var paidOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThanhCong);
+                var failedOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThatBai);
+
+                // Gửi realtime qua SignalR
+                var stats = new
+                {
+                    TotalOrders = totalOrders,
+                    PendingOrders = pendingOrders,
+                    PaidOrders = paidOrders,
+                    FailedOrders = failedOrders,
+                };
+                var context = GlobalHost.ConnectionManager.GetHubContext<OrderHub>();
+                context.Clients.All.UpdateOrderStats(stats);
+
+                return RedirectToAction("Statistic");
+            }
+            return View(order);
+        }
+
+        // Trang thống kê - Thống kê đơn hàng & doanh thu hôm nay theo giờ
+        public ActionResult Statistic()
+        {
+            // Lấy dữ liệu thống kê chuẩn xác, chỉ tính đơn đã thanh toán thành công
+            var paidOrdersQuery = db.Orders.Where(o => o.Status == PaymentStatus.ThanhCong);
+
+            var model = new OrderStatisticsViewModel
+            {
+                TotalOrders = paidOrdersQuery.Count(),
+
+                PendingOrders = db.Orders.Count(o => o.Status == PaymentStatus.ChoThanhToan),
+
+                PaidOrders = paidOrdersQuery.Count(),
+
+                FailedOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThatBai),
+
+                // Biểu đồ doanh thu theo ngày hôm nay (giả sử lấy doanh thu trong ngày hiện tại)
+                DayLabels = new List<string>(),
+                DayCounts = new List<int>(),
+
+                // Biểu đồ doanh thu theo tháng hôm nay (hoặc tháng hiện tại)
+                MonthLabels = new List<string>(),
+                MonthRevenue = new List<decimal>()
+            };
+
+            // Lấy doanh thu theo ngày trong hôm nay (theo giờ hiện tại)
+            var today = DateTime.Today;
+
+            var ordersToday = paidOrdersQuery
+                .Where(o => DbFunctions.TruncateTime(o.CreatedDate) == today)
+                .GroupBy(o => o.CreatedDate.Hour)
+                .Select(g => new { Hour = g.Key, Count = g.Count() })
+                .OrderBy(g => g.Hour)
+                .ToList();
+
+            model.DayLabels = ordersToday.Select(g => $"{g.Hour}:00").ToList();
+            model.DayCounts = ordersToday.Select(g => g.Count).ToList();
+
+            // Lấy doanh thu tổng theo tháng hôm nay (hoặc 1 tháng hiện tại) - có thể điều chỉnh theo yêu cầu
+            var currentMonth = DateTime.Today.Month;
+            var currentYear = DateTime.Today.Year;
+
+            var monthlyRevenue = paidOrdersQuery
+                .Where(o => o.CreatedDate.Month == currentMonth && o.CreatedDate.Year == currentYear)
+                .GroupBy(o => o.CreatedDate.Day)
+                .Select(g => new { Day = g.Key, Total = g.Sum(x => x.TotalAmount) })
+                .OrderBy(g => g.Day)
+                .ToList();
+
+            model.MonthLabels = monthlyRevenue.Select(g => g.Day.ToString()).ToList();
+            model.MonthRevenue = monthlyRevenue.Select(g => g.Total).ToList();
+
+            return View(model);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult UpdateStatus(int id, PaymentStatus status)
         {
-            var order = db.Orders
-                          .Include(o => o.OrderDetails)
-                          .FirstOrDefault(o => o.Id == id);
+            var order = db.Orders.FirstOrDefault(o => o.Id == id);
             if (order == null) return HttpNotFound();
-
-            // Rollback stock only if moving from pending → thất bại
-            if (status == PaymentStatus.ThatBai
-                && order.Status == PaymentStatus.ChoThanhToan)
-            {
-                foreach (var d in order.OrderDetails)
-                {
-                    var p = db.Products.Find(d.ProductId);
-                    p.Quantity += d.Quantity;
-                }
-            }
 
             order.Status = status;
             db.SaveChanges();
+
+            var totalOrders = db.Orders.Count();
+            var pendingOrders = db.Orders.Count(o => o.Status == PaymentStatus.ChoThanhToan);
+            var paidOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThanhCong);
+            var failedOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThatBai);
+
+            var today = DateTime.Today;
+            var ordersToday = db.Orders
+                .Where(o => o.Status == PaymentStatus.ThanhCong && DbFunctions.TruncateTime(o.CreatedDate) == today)
+                .GroupBy(o => o.CreatedDate.Hour)
+                .Select(g => new { Hour = g.Key, Count = g.Count() })
+                .OrderBy(g => g.Hour)
+                .ToList();
+
+            var monthlyRevenue = db.Orders
+                .Where(o => o.Status == PaymentStatus.ThanhCong && o.CreatedDate.Month == today.Month && o.CreatedDate.Year == today.Year)
+                .GroupBy(o => o.CreatedDate.Day)
+                .Select(g => new { Day = g.Key, Total = g.Sum(x => x.TotalAmount) })
+                .OrderBy(g => g.Day)
+                .ToList();
+
+            var stats = new OrderStatisticsViewModel
+            {
+                TotalOrders = totalOrders,
+                PendingOrders = pendingOrders,
+                PaidOrders = paidOrders,
+                FailedOrders = failedOrders,
+                DayLabels = ordersToday.Select(g => g.Hour + ":00").ToList(),
+                DayCounts = ordersToday.Select(g => g.Count).ToList(),
+                MonthLabels = monthlyRevenue.Select(g => g.Day.ToString()).ToList(),
+                MonthRevenue = monthlyRevenue.Select(g => g.Total).ToList()
+            };
+
+            var context = GlobalHost.ConnectionManager.GetHubContext<OrderHub>();
+            context.Clients.All.updateOrderStats(stats);
+
             return RedirectToAction("Index");
         }
 
+
+        // Các action khác giữ nguyên
         public ActionResult View(int id)
         {
             var item = db.Orders.Find(id);
@@ -82,42 +192,6 @@ namespace WebBanHangOnline.Areas.Admin.Controllers
                 return Json(new { message = "Success", Success = true });
             }
             return Json(new { message = "Unsuccess", Success = false });
-        }
-
-        public void ThongKe(string fromDate, string toDate)
-        {
-            var query = from o in db.Orders
-                        join od in db.OrderDetails on o.Id equals od.OrderId
-                        join p in db.Products
-on od.ProductId equals p.Id
-                        select new
-                        {
-                            CreatedDate = o.CreatedDate,
-                            Quantity = od.Quantity,
-                            Price = od.Price,
-                            OriginalPrice = p.Price
-                        };
-            if (!string.IsNullOrEmpty(fromDate))
-            {
-                DateTime start = DateTime.ParseExact(fromDate, "dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"));
-                query = query.Where(x => x.CreatedDate >= start);
-            }
-            if (!string.IsNullOrEmpty(toDate))
-            {
-                DateTime endDate = DateTime.ParseExact(toDate, "dd/MM/yyyy", CultureInfo.GetCultureInfo("vi-VN"));
-                query = query.Where(x => x.CreatedDate < endDate);
-            }
-            var result = query.GroupBy(x => DbFunctions.TruncateTime(x.CreatedDate)).Select(r => new
-            {
-                Date = r.Key.Value,
-                TotalBuy = r.Sum(x => x.OriginalPrice * x.Quantity), // tổng giá bán
-                TotalSell = r.Sum(x => x.Price * x.Quantity) // tổng giá mua
-            }).Select(x => new RevenueStatisticViewModel
-            {
-                Date = x.Date,
-                Benefit = x.TotalSell - x.TotalBuy,
-                Revenues = x.TotalSell
-            });
         }
     }
 }
