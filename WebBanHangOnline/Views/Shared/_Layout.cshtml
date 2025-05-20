@@ -9,6 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="~/Content/assets/styles/bootstrap4/bootstrap.min.css">
     <link href="~/Content/assets/plugins/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="~/Content/assets/styles/main_styles.css" />
+
+
     <link rel="stylesheet" type="text/css" href="~/Content/assets/plugins/OwlCarousel2-2.2.1/owl.carousel.css">
     <link rel="stylesheet" type="text/css" href="~/Content/assets/plugins/OwlCarousel2-2.2.1/owl.theme.default.css">
     <link rel="stylesheet" type="text/css" href="~/Content/assets/plugins/OwlCarousel2-2.2.1/animate.css">
@@ -55,29 +58,29 @@
 
                                     <!-- Currency / Language / My Account -->
                                     @*<li class="currency">
-                                            <a href="#">
-                                                usd
-                                                <i class="fa fa-angle-down"></i>
-                                            </a>
-                                            <ul class="currency_selection">
-                                                <li><a href="#">cad</a></li>
-                                                <li><a href="#">aud</a></li>
-                                                <li><a href="#">eur</a></li>
-                                                <li><a href="#">gbp</a></li>
-                                            </ul>
-                                        </li>*@
+                                        <a href="#">
+                                            usd
+                                            <i class="fa fa-angle-down"></i>
+                                        </a>
+                                        <ul class="currency_selection">
+                                            <li><a href="#">cad</a></li>
+                                            <li><a href="#">aud</a></li>
+                                            <li><a href="#">eur</a></li>
+                                            <li><a href="#">gbp</a></li>
+                                        </ul>
+                                    </li>*@
                                     @*<li class="language">
-                                            <a href="#">
-                                                English
-                                                <i class="fa fa-angle-down"></i>
-                                            </a>
-                                            <ul class="language_selection">
-                                                <li><a href="#">French</a></li>
-                                                <li><a href="#">Italian</a></li>
-                                                <li><a href="#">German</a></li>
-                                                <li><a href="#">Spanish</a></li>
-                                            </ul>
-                                        </li>*@
+                                        <a href="#">
+                                            English
+                                            <i class="fa fa-angle-down"></i>
+                                        </a>
+                                        <ul class="language_selection">
+                                            <li><a href="#">French</a></li>
+                                            <li><a href="#">Italian</a></li>
+                                            <li><a href="#">German</a></li>
+                                            <li><a href="#">Spanish</a></li>
+                                        </ul>
+                                    </li>*@
                                     <li class="account">
                                         @if (!Request.IsAuthenticated)
                                         {
@@ -134,14 +137,15 @@
                                 <ul class="navbar_user">
                                     <li class="li_search">
                                         <style>
-                                            .box-search{
-                                                position:absolute;
-                                                width:350px;
-                                                right:0;
-                                                display:none;
+                                            .box-search {
+                                                position: absolute;
+                                                width: 350px;
+                                                right: 0;
+                                                display: none;
                                             }
-                                            .li_search:hover .box-search{
-                                                display:block;
+
+                                            .li_search:hover .box-search {
+                                                display: block;
                                             }
                                         </style>
                                         <a href="#"><i class="fa fa-search" aria-hidden="true"></i></a>
@@ -157,7 +161,22 @@
                                             </div>
                                         </form>
                                     </li>
-                                    <li><a href="#"><i class="fa fa-user" aria-hidden="true"></i></a></li>
+                                    <li>
+                                        @if (!Request.IsAuthenticated)
+                                        {
+                                            <a href="@Url.Action("Login", "Account", new { returnUrl = "/MyOrders" })">
+                                                <i class="fa fa-list" aria-hidden="true"></i>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="@Url.Action("Index", "MyOrders")">
+                                                <i class="fa fa-list" aria-hidden="true"></i>
+                                            </a>
+                                        }
+                                    </li>
+
+
                                     <li class="checkout">
                                         <a href="/gio-hang">
                                             <i class="fa fa-shopping-cart" aria-hidden="true"></i>
@@ -224,7 +243,13 @@
                 </ul>
             </div>
         </div>
-        @RenderBody()
+
+        <main>
+            <div class="container mt-5 mb-5">
+                @RenderBody()
+            </div>
+        </main>
+
 
         <!-- Newsletter -->
         @Html.Action("Partial_Subcrice", "Home")

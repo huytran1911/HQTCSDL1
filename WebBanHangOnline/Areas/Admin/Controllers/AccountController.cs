@@ -12,7 +12,7 @@ using WebBanHangOnline.Models;
 
 namespace WebBanHangOnline.Areas.Admin.Controllers
 {
-    //[Authorize(Roles = "Admin")]
+    [RouteArea("Admin")]
     public class AccountController : Controller
     {
         private ApplicationSignInManager _signInManager;

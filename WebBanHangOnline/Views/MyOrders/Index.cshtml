@@ -1,0 +1,62 @@
+﻿
+@model List<WebBanHangOnline.Models.ViewModels.OrderTrackingViewModel>
+@{
+    ViewBag.Title = "Đơn hàng của tôi";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // Đảm bảo đây là layout dành cho người dùng
+}
+
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4 text-center">@ViewBag.Title</h2>
+        <table id="orders-table" class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Chi tiết</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Model)
+                {
+                    <tr data-code="@o.Code">
+                        <td>@o.Code</td>
+                        <td>@o.CreatedDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@String.Format("{0:N0} đ", o.TotalAmount)</td>
+                        <td class="status-cell">@o.Status</td>
+                        <td><a href="/MyOrders/Details?code=@o.Code" class="btn btn-sm btn-info">Xem</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            setInterval(function () {
+                $('#orders-table tr[data-code]').each(function () {
+                    const row = $(this);
+                    const code = row.data('code');
+
+                    $.get('/MyOrders/Status', { code }, function (res) {
+                        if (res.success) {
+                            const cell = row.find('.status-cell');
+                            if (cell.text() !== res.status) {
+                                cell.text(res.status)
+                                    .addClass('table-info')
+                                    .delay(2000)
+                                    .queue(function (next) {
+                                        $(this).removeClass('table-info'); next();
+                                    });
+                            }
+                        }
+                    });
+                });
+            }, 5000); // mỗi 5 giây
+        });
+    </script>
+}
+

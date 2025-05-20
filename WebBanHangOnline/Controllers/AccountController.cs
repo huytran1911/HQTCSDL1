@@ -99,23 +99,39 @@ namespace WebBanHangOnline.Controllers
                 return View(model);
             }
 
-            // This doesn't count login failures towards account lockout
-            // To enable password failures to trigger account lockout, change to shouldLockout: true
             var result = await SignInManager.PasswordSignInAsync(model.UserName, model.Password, model.RememberMe, shouldLockout: false);
-            switch (result)
+            if (result == SignInStatus.Success)
             {
-                case SignInStatus.Success:
-                    return RedirectToLocal(returnUrl);
-                case SignInStatus.LockedOut:
-                    return View("Lockout");
-                case SignInStatus.RequiresVerification:
-                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = model.RememberMe });
-                case SignInStatus.Failure:
-                default:
-                    ModelState.AddModelError("", "Invalid login attempt.");
-                    return View(model);
+                var user = await UserManager.FindAsync(model.UserName, model.Password);
+                var roles = await UserManager.GetRolesAsync(user.Id);
+
+                if (roles.Contains("Admin"))
+                {
+                    return RedirectToAction("Index", "Order", new { area = "Admin" });
+                }
+
+                // Nếu có returnUrl và nó nằm trong domain (tránh open redirect)
+                if (Url.IsLocalUrl(returnUrl))
+                    return Redirect(returnUrl);
+
+                return RedirectToAction("Index", "MyOrders"); // hoặc "Home"
+            }
+
+            if (result == SignInStatus.LockedOut)
+            {
+                return View("Lockout");
+            }
+            else if (result == SignInStatus.RequiresVerification)
+            {
+                return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = model.RememberMe });
+            }
+            else
+            {
+                ModelState.AddModelError("", "Invalid login attempt.");
+                return View(model);
             }
         }
+
 
         //
         // GET: /Account/VerifyCode

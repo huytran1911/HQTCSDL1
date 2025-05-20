@@ -1,0 +1,20 @@
+﻿@model WebBanHangOnline.Models.EF.Order
+
+@{
+    ViewBag.Title = "Chi tiết đơn hàng";
+    Layout = "~/Views/Shared/_Layout.cshtml"; // frontend layout
+}
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4 text-center">@ViewBag.Title</h2>
+            <h2>Chi tiết đơn hàng - @Model.Code</h2>
+            <p><strong>Khách hàng:</strong> @Model.CustomerName</p>
+            <p><strong>Ngày đặt:</strong> @Model.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+            <p><strong>Tổng tiền:</strong> @String.Format("{0:N0} đ", @Model.TotalAmount)</p>
+            <p><strong>Trạng thái:</strong> @Model.Status</p>
+        </section>
+</div>
+            <h4>Sản phẩm</h4>
+            <div id="product-details">
+                @Html.Action("DetailsProducts", "MyOrders", new { id = Model.Id })
+            </div>
