@@ -1162,8 +1162,13 @@ section
 	font-size: 12px;
 	font-weight: 600;
 }
-.product-item:hover .add_to_cart_button
-{
+/* Override để nút luôn hiển thị trong trang chi tiết */
+.product_details .add_to_cart_button {
+	visibility: visible !important;
+	opacity: 1 !important;
+}
+
+.product-item:hover .add_to_cart_button {
 	visibility: visible;
 	opacity: 1;
 }
