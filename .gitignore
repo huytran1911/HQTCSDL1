@@ -6,3 +6,17 @@ WebBanHangOnline/obj/Debug/DesignTimeResolveAssemblyReferencesInput.cache
 *.cache
 *.cache
 *.vsidx
+*.vsidx
+*.vsidx
+/.vs/WebBanHangOnline/v17
+*.pdb
+*.cache
+*.pdb
+*.cache
+.vs/WebBanHangOnline/v17/.suo
+.vs/WebBanHangOnline/v17/DocumentLayout.backup.json
+.vs/WebBanHangOnline/v17/DocumentLayout.json
+.vs/WebBanHangOnline/v17/fileList.bin
+WebBanHangOnline/bin/WebBanHangOnline.pdb
+WebBanHangOnline/obj/Debug/WebBanHangOnline.csproj.AssemblyReference.cache
+WebBanHangOnline/obj/Debug/WebBanHangOnline.pdb
