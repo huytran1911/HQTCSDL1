@@ -272,13 +272,21 @@
             //)
 
             //Timepicker
-         
+
 
         });
-          
+
     </script>
-    <script src="~/Content/ckeditor/ckeditor.js"></script>
-    <script src="~/Content/ckfinder/ckfinder.js"></script>
+    <!-- jQuery đã có ở đây -->
+    <script src="~/Content/clients/plugins/jquery/jquery.min.js"></script>
+
+    <!-- Thêm dòng này để load SignalR client library -->
+    <script src="~/Scripts/jquery.signalR-2.4.3.min.js"></script>
+
+    <!-- Thư viện hubs tự sinh -->
+    <script src="/signalr/hubs"></script>
+
+    <!-- Cuối cùng mới đến section scripts của view -->
     @RenderSection("scripts", required: false)
 </body>
 </html>
