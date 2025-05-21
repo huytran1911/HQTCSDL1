@@ -12,12 +12,12 @@ namespace WebBanHangOnline.Common
 
         public static string GetValue(string key)
         {
-            using (var db = new ApplicationDbContext())
+            var item = db.SystemSettings.SingleOrDefault(x => x.SettingKey == key);
+            if (item != null)
             {
-                var item = db.SystemSettings.SingleOrDefault(x => x.SettingKey == key);
-                return item?.SettingValue ?? "";
+                return item.SettingValue;
             }
+            return "";
         }
-
     }
 }

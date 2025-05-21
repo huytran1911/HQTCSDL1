@@ -6,11 +6,9 @@ using System.Configuration;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
-using WebBanHangOnline.Hubs;
 using WebBanHangOnline.Models;
 using WebBanHangOnline.Models.EF;
 using WebBanHangOnline.Models.Payments;
-using WebBanHangOnline.Models.ViewModels;
 
 namespace WebBanHangOnline.Controllers
 {
@@ -252,27 +250,6 @@ namespace WebBanHangOnline.Controllers
 
                     // 3) Commit
                     tran.Commit();
-
-                    var stats = new OrderStatisticsViewModel
-                    {
-                        TotalOrders = db.Orders.Count(),
-                        PendingOrders = db.Orders.Count(o => o.Status == PaymentStatus.ChoThanhToan),
-                        PaidOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThanhCong),
-                        FailedOrders = db.Orders.Count(o => o.Status == PaymentStatus.ThatBai),
-
-                        // Không gửi dữ liệu biểu đồ
-                        DayLabels = null,
-                        DayCounts = null,
-                        MonthLabels = null,
-                        MonthRevenue = null
-                    };
-
-                    // Gửi lên hub
-                    OrderHub.BroadcastNewOrder(order.Code);
-                    OrderHub.BroadcastOrderStats(stats);
-
-
-
                     // Gửi mail cho khách
                     var strSanPham = "";
                 decimal thanhtien = 0;

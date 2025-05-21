@@ -1,6 +1,5 @@
 ﻿using Microsoft.Owin;
 using Owin;
-using Microsoft.AspNet.SignalR;
 
 [assembly: OwinStartupAttribute(typeof(WebBanHangOnline.Startup))]
 namespace WebBanHangOnline
